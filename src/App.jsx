@@ -319,7 +319,8 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function updateApplicationStatus(id, status) {
+  function updateApplicationStatus(id, status) 
+  {
     setApplications((current) =>
       current.map((item) => (item.id === id ? { ...item, status } : item))
     );
