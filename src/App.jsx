@@ -1,6 +1,6 @@
-
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./index.css";
+import { LANGUAGES, translate } from "./i18n";
 
 const rentals = [
   {
@@ -11,7 +11,7 @@ const rentals = [
     duration: "2 hours",
     capacity: 6,
     image:
-      "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1000&q=85",
+      "https://img.getmyboat.com/images/9ba3a9cf-dab3-479e-be3a-97d820ff9f4e/-processed.png",
     description: "Discover the beautiful coastline around Al Hoceima.",
     tag: "Popular",
   },
@@ -23,7 +23,7 @@ const rentals = [
     duration: "3 hours",
     capacity: 10,
     image:
-      "https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?auto=format&fit=crop&w=1000&q=85",
+      "https://www.superyacht.eu/wp-content/uploads/2019/10/riva-110_apertura.jpg",
     description: "A private trip with space for your friends and family.",
     tag: "Premium",
   },
@@ -35,7 +35,7 @@ const rentals = [
     duration: "30 minutes",
     capacity: 1,
     image:
-      "https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?auto=format&fit=crop&w=1000&q=85",
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/fe/04/81/jet-ski-2017.jpg?w=1200&h=-1&s=1",
     description: "Feel the speed and enjoy the Mediterranean.",
     tag: "Adventure",
   },
@@ -60,15 +60,15 @@ const menu = [
     category: "Drinks",
     price: 25,
     image:
-      "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?auto=format&fit=crop&w=600&q=80",
+      "https://www.grunge.com/img/gallery/times-red-bull-got-in-serious-trouble/intro-1629228717.jpg",
   },
   {
     id: 102,
-    name: "Fresh Orange Juice",
+    name: "Fresh Juice",
     category: "Drinks",
     price: 25,
     image:
-      "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80",
+      "https://assets.magimix.com/files/rec_23156/photo_mojito-blender-photo.jpg",
   },
   {
     id: 103,
@@ -88,6 +88,22 @@ const menu = [
   },
 ];
 
+// Water gear shop data. Names are translated in src/i18n.js (gear.<id>).
+// image: paste a photo URL here; leave "" to show the icon tile instead.
+const CLOTHING_SIZES = ["S", "M", "L", "XL"];
+const SHOE_SIZES = ["38", "39", "40", "41", "42", "43", "44", "45"];
+
+const gear = [
+  { id: 201, category: "Clothing", price: 450, icon: "🏄", image: "", sizes: CLOTHING_SIZES },
+  { id: 202, category: "Clothing", price: 180, icon: "👕", image: "", sizes: CLOTHING_SIZES },
+  { id: 203, category: "Clothing", price: 160, icon: "🩳", image: "", sizes: CLOTHING_SIZES },
+  { id: 204, category: "Eyewear", price: 90, icon: "🥽", image: "", sizes: [] },
+  { id: 205, category: "Eyewear", price: 220, icon: "🤿", image: "", sizes: [] },
+  { id: 206, category: "Eyewear", price: 140, icon: "🕶️", image: "", sizes: [] },
+  { id: 207, category: "Accessories", price: 110, icon: "👟", image: "", sizes: SHOE_SIZES },
+  { id: 208, category: "Accessories", price: 60, icon: "📱", image: "", sizes: [] },
+];
+
 const money = (value) =>
   new Intl.NumberFormat("fr-MA", {
     style: "currency",
@@ -103,8 +119,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [cart, setCart] = useState([]);
   const [orderOpen, setOrderOpen] = useState(false);
-  const [jetCode, setJetCode] = useState("");
-  const [verified, setVerified] = useState(false);
+  
   const [records, setRecords] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [expenseAmount, setExpenseAmount] = useState("");
@@ -115,6 +130,34 @@ function App() {
     address: "",
     notes: "",
   });
+  const [gearFilter, setGearFilter] = useState("All");
+  const [applications, setApplications] = useState([]);
+  const [lang, setLang] = useState(() => {
+    try {
+      const saved = localStorage.getItem("rifsea-lang");
+      return LANGUAGES.some((item) => item.code === saved) ? saved : "en";
+    } catch {
+      return "en";
+    }
+  });
+
+  // t("key") -> text in the chosen language. t("key", { n: 3 }) fills {n}.
+  const t = (key, vars) => translate(lang, key, vars);
+  const cartLabel = (item) =>
+    item.size ? `${t(item.nameKey)} (${item.size})` : t(item.nameKey);
+
+  useEffect(() => {
+    document.documentElement.lang = lang === "no" ? "nb" : lang;
+    try {
+      localStorage.setItem("rifsea-lang", lang);
+    } catch {
+      /* storage blocked: the language simply is not remembered */
+    }
+  }, [lang]);
+
+  const filteredGear = gear.filter(
+    (item) => gearFilter === "All" || item.category === gearFilter
+  );
 
   const filteredRentals = useMemo(
     () =>
@@ -166,10 +209,7 @@ function App() {
 
     if (!booking) return;
 
-    if (booking.type === "Jet ski" && !verified) {
-      setNotice("Complete the eligibility demo before booking a jet ski.");
-      return;
-    }
+    
 
     const entry = {
       id: `RS-${Date.now().toString().slice(-8)}`,
@@ -184,28 +224,13 @@ function App() {
 
     setRecords((current) => [...current, entry]);
     setBooking(null);
-    setNotice(
-      `Request ${entry.id} created. This is a demo request, not a confirmed reservation or payment.`
-    );
-  }
-
-  function verifyJetSki(event) {
-    event.preventDefault();
-
-    // DEMO ONLY:
-    // A code entered here is NOT proof of a licence or legal eligibility.
-    if (jetCode.trim().length >= 6) {
-      setVerified(true);
-      setNotice(
-        "Demo code accepted. Real bookings must still pass secure document and operator checks."
-      );
-    } else {
-      setVerified(false);
-      setNotice("Enter a demo code with at least 6 characters.");
-    }
+    setNotice(t("booking.created", { id: entry.id }));
   }
 
   function addToCart(product) {
+    // menu items use "menu.<id>"; gear items bring their own nameKey
+    const nameKey = product.nameKey ?? `menu.${product.id}`;
+
     setCart((current) => {
       const found = current.find((item) => item.id === product.id);
 
@@ -217,10 +242,10 @@ function App() {
         );
       }
 
-      return [...current, { ...product, quantity: 1 }];
+      return [...current, { ...product, nameKey, quantity: 1 }];
     });
 
-    setNotice(`${product.name} added to your cart.`);
+    setNotice(t("cart.added", { name: cartLabel({ ...product, nameKey }) }));
   }
 
   function changeQuantity(id, amount) {
@@ -239,15 +264,13 @@ function App() {
     event.preventDefault();
 
     if (!cart.length) {
-      setNotice("Your cart is empty.");
+      setNotice(t("cart.emptyNotice"));
       return;
     }
 
     const orderId = `FOOD-${Date.now().toString().slice(-6)}`;
 
-    setNotice(
-      `Demo order ${orderId} created for ${money(cartTotal)}. No restaurant has received this order and no payment was taken.`
-    );
+    setNotice(t("order.created", { id: orderId, total: money(cartTotal) }));
     setCart([]);
     setOrderOpen(false);
     setOrderCustomer({
@@ -290,6 +313,18 @@ function App() {
     );
   }
 
+  function addApplication(application) {
+    setApplications((current) => [...current, application]);
+    setNotice(t("partner.sent", { id: application.id }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function updateApplicationStatus(id, status) {
+    setApplications((current) =>
+      current.map((item) => (item.id === id ? { ...item, status } : item))
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -302,31 +337,45 @@ function App() {
         </button>
 
         <nav className="navigation">
-          {["Home", "Rentals", "Restaurants", "Jet Ski Access", "Dashboard"].map(
+          {["Home", "Rentals", "Restaurants", "Water Gear", "Partners", "Dashboard"].map(
             (item) => (
               <button
                 key={item}
                 className={page === item ? "nav-link active" : "nav-link"}
                 onClick={() => goTo(item)}
               >
-                {item}
-                {item === "Restaurants" && cart.length > 0 && (
-                  <span className="cart-count">{cart.length}</span>
-                )}
+                {t(`nav.${item}`)}
+                {(item === "Restaurants" || item === "Water Gear") &&
+                  cart.length > 0 && (
+                    <span className="cart-count">{cart.length}</span>
+                  )}
               </button>
             )
           )}
         </nav>
 
+        <select
+          className="lang-select"
+          value={lang}
+          onChange={(event) => setLang(event.target.value)}
+          aria-label={t("lang.label")}
+        >
+          {LANGUAGES.map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+
         <button className="button button-dark nav-cta" onClick={() => goTo("Rentals")}>
-          Explore <span aria-hidden="true">↗</span>
+          {t("nav.explore")} <span aria-hidden="true">↗</span>
         </button>
       </header>
 
       {notice && (
         <div className="notice" role="status">
           <span>{notice}</span>
-          <button onClick={() => setNotice("")} aria-label="Dismiss notice">
+          <button onClick={() => setNotice("")} aria-label={t("notice.dismiss")}>
             ×
           </button>
         </div>
@@ -339,16 +388,15 @@ function App() {
               <div className="hero-shade" />
               <div className="hero-content">
                 <span className="eyebrow light-eyebrow">
-                  YOUR MEDITERRANEAN ESCAPE
+                  {t("hero.eyebrow")}
                 </span>
                 <h1>
-                  Life is better
+                  {t("hero.title1")}
                   <br />
-                  <em>by the sea.</em>
+                  <em>{t("hero.title2")}</em>
                 </h1>
                 <p>
-                  Discover boat trips, private yachts, jet ski adventures,
-                  and local flavours in Al Hoceima.
+                  {t("hero.text")}
                 </p>
 
                 <div className="hero-actions">
@@ -356,32 +404,32 @@ function App() {
                     className="button button-light"
                     onClick={() => goTo("Rentals")}
                   >
-                    Explore rentals <span>↗</span>
+                    {t("hero.explore")} <span>↗</span>
                   </button>
                   <button
                     className="button button-glass"
                     onClick={() => goTo("Restaurants")}
                   >
-                    Taste the coast
+                    {t("hero.taste")}
                   </button>
                 </div>
 
                 <div className="hero-foot">
                   <span>35°14′ N · RIF COAST</span>
-                  <span>SEA · SUN · FREEDOM</span>
+                  <span>{t("hero.foot2")}</span>
                 </div>
               </div>
               <div className="hero-stamp">
-                <span>MADE FOR</span>
-                <strong>SEA DAYS</strong>
+                <span>{t("hero.stamp1")}</span>
+                <strong>{t("hero.stamp2")}</strong>
                 <span>AL HOCEIMA</span>
               </div>
             </section>
 
             <section className="quick-search section-wrap">
               <div>
-                <span className="eyebrow">PLAN YOUR DAY</span>
-                <h2>Where will the sea take you?</h2>
+                <span className="eyebrow">{t("quick.eyebrow")}</span>
+                <h2>{t("quick.title")}</h2>
               </div>
               <div className="quick-options">
                 {["Boat", "Yacht", "Jet ski"].map((type) => (
@@ -394,7 +442,7 @@ function App() {
                     }}
                   >
                     <span>{type === "Boat" ? "↗" : type === "Yacht" ? "◇" : "≈"}</span>
-                    {type}
+                    {t(`type.${type}`)}
                   </button>
                 ))}
               </div>
@@ -403,15 +451,16 @@ function App() {
             <section className="section-wrap section-space">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">THE SEA IS CALLING</span>
-                  <h2>Find your next adventure</h2>
+                  <span className="eyebrow">{t("home.adv.eyebrow")}</span>
+                  <h2>{t("home.adv.title")}</h2>
                 </div>
                 <button className="text-link" onClick={() => goTo("Rentals")}>
-                  All rentals ↗
+                  {t("home.allRentals")}
                 </button>
               </div>
               <RentalGrid
                 items={rentals.slice(0, 3)}
+                t={t}
                 onBook={(item) => {
                   setBooking(item);
                   setNotice("");
@@ -421,57 +470,68 @@ function App() {
 
             <section className="experience-band">
               <div>
-                <span className="eyebrow light-eyebrow">MORE THAN A BOAT TRIP</span>
-                <h2>Make a whole day of it.</h2>
+                <span className="eyebrow light-eyebrow">{t("band.eyebrow")}</span>
+                <h2>{t("band.title")}</h2>
                 <p>
-                  Find a ride, order your favourite drinks, and enjoy the
-                  Mediterranean at your own pace.
+                  {t("band.text")}
                 </p>
                 <button
                   className="button button-light"
                   onClick={() => goTo("Restaurants")}
                 >
-                  Explore food & drinks ↗
+                  {t("band.button")}
                 </button>
               </div>
               <div className="experience-circle">
                 <span>RIF</span>
                 <strong>SEA</strong>
-                <small>YOUR COASTAL GUIDE</small>
+                <small>{t("band.guide")}</small>
               </div>
             </section>
 
             <section className="section-wrap section-space">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">LOCAL FLAVOURS</span>
-                  <h2>Bring the beach to your table</h2>
+                  <span className="eyebrow">{t("home.food.eyebrow")}</span>
+                  <h2>{t("home.food.title")}</h2>
                 </div>
                 <button
                   className="text-link"
                   onClick={() => goTo("Restaurants")}
                 >
-                  Order now ↗
+                  {t("home.orderNow")}
                 </button>
               </div>
-              <MenuGrid items={menu.slice(0, 3)} onAdd={addToCart} />
+              <MenuGrid items={menu.slice(0, 3)} onAdd={addToCart} t={t} />
+            </section>
+
+            <section className="section-wrap section-space">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">{t("home.gear.eyebrow")}</span>
+                  <h2>{t("home.gear.title")}</h2>
+                </div>
+                <button className="text-link" onClick={() => goTo("Water Gear")}>
+                  {t("home.allGear")}
+                </button>
+              </div>
+              <GearGrid items={gear.slice(0, 3)} onAdd={addToCart} t={t} />
             </section>
           </>
         )}
 
         {page === "Rentals" && (
           <section className="section-wrap page-section">
-            <span className="eyebrow">YOUR NEXT SEA ADVENTURE</span>
-            <h1 className="page-title">Explore the fleet.</h1>
+            <span className="eyebrow">{t("rentals.eyebrow")}</span>
+            <h1 className="page-title">{t("rentals.title")}</h1>
             <p className="page-intro">
-              Compare activities, prices, durations, and capacity before
-              requesting a booking.
+              {t("rentals.intro")}
             </p>
 
             <div className="filter-bar">
               <input
-                aria-label="Search rentals"
-                placeholder="Search by name..."
+                aria-label={t("rentals.searchAria")}
+                placeholder={t("rentals.searchPh")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -482,7 +542,7 @@ function App() {
                     className={filter === type ? "filter active" : "filter"}
                     onClick={() => setFilter(type)}
                   >
-                    {type}
+                    {t(`type.${type}`)}
                   </button>
                 ))}
               </div>
@@ -490,6 +550,7 @@ function App() {
 
             <RentalGrid
               items={filteredRentals}
+              t={t}
               onBook={(item) => {
                 setBooking(item);
                 setNotice("");
@@ -497,52 +558,51 @@ function App() {
             />
 
             {!filteredRentals.length && (
-              <p className="empty-state">No matching rentals found.</p>
+              <p className="empty-state">{t("rentals.empty")}</p>
             )}
           </section>
         )}
 
         {page === "Restaurants" && (
           <section className="section-wrap page-section">
-            <span className="eyebrow">A TASTE OF THE RIF</span>
-            <h1 className="page-title">Good food. Sea views.</h1>
+            <span className="eyebrow">{t("rest.eyebrow")}</span>
+            <h1 className="page-title">{t("rest.title")}</h1>
             <p className="page-intro">
-              Browse example menu items from a demo partner. Real restaurant
-              availability and delivery must be connected before launch.
+              {t("rest.intro")}
             </p>
 
             <div className="restaurant-banner">
               <div>
-                <span className="eyebrow">YOUR BEACH BREAK</span>
-                <h2>Cold drinks. Fresh bites.</h2>
-                <p>Order favourites for pickup or approved delivery.</p>
+                <span className="eyebrow">{t("rest.banner.eyebrow")}</span>
+                <h2>{t("rest.banner.title")}</h2>
+                <p>{t("rest.banner.text")}</p>
               </div>
               <button
                 className="button button-dark"
                 onClick={() => setOrderOpen(true)}
               >
-                View cart ({cart.length})
+                {t("rest.viewCart", { n: cart.length })}
               </button>
             </div>
 
-            <MenuGrid items={menu} onAdd={addToCart} />
+            <MenuGrid items={menu} onAdd={addToCart} t={t} />
 
             <div className="cart-panel">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">YOUR SELECTION</span>
-                  <h2>Your cart</h2>
+                  <span className="eyebrow">{t("cart.eyebrow")}</span>
+                  <h2>{t("cart.title")}</h2>
                 </div>
                 <strong className="cart-total">{money(cartTotal)}</strong>
               </div>
 
               {cart.length === 0 ? (
-                <p className="empty-state">Your cart is empty. Add something tasty.</p>
+                <p className="empty-state">{t("cart.empty")}</p>
               ) : (
                 <>
                   {cart.map((item) => (
                     <div className="cart-row" key={item.id}>
-                      <span>{item.name}</span>
+                      <span>{cartLabel(item)}</span>
                       <div className="quantity-controls">
                         <button onClick={() => changeQuantity(item.id, -1)}>−</button>
                         <span>{item.quantity}</span>
@@ -555,7 +615,7 @@ function App() {
                     className="button button-dark"
                     onClick={() => setOrderOpen(true)}
                   >
-                    Continue to order
+                    {t("cart.continue")}
                   </button>
                 </>
               )}
@@ -563,57 +623,41 @@ function App() {
           </section>
         )}
 
-        {page === "Jet Ski Access" && (
+        {page === "Water Gear" && (
+          <section className="section-wrap page-section">
+            <span className="eyebrow">{t("gear.eyebrow")}</span>
+            <h1 className="page-title">{t("gear.title")}</h1>
+            <p className="page-intro">{t("gear.intro")}</p>
+
+            <div className="filter-bar">
+              <div className="filter-buttons">
+                {["All", "Clothing", "Eyewear", "Accessories"].map((category) => (
+                  <button
+                    key={category}
+                    className={gearFilter === category ? "filter active" : "filter"}
+                    onClick={() => setGearFilter(category)}
+                  >
+                    {t(`gear.cat.${category}`)}
+                  </button>
+                ))}
+              </div>
+              <button className="button button-dark" onClick={() => setOrderOpen(true)}>
+                {t("rest.viewCart", { n: cart.length })}
+              </button>
+            </div>
+
+            <GearGrid items={filteredGear} onAdd={addToCart} t={t} />
+          </section>
+        )}
+
+        {page === "Partners" && (
           <section className="section-wrap page-section narrow-section">
-            <span className="eyebrow">SAFETY FIRST</span>
-            <h1 className="page-title">Jet ski access.</h1>
-            <p className="page-intro">
-              A prototype access gate for jet ski bookings. Production access
-              must be based on actual eligibility checks, not just a code.
-            </p>
+            <span className="eyebrow">{t("partner.eyebrow")}</span>
+            <h1 className="page-title">{t("partner.title")}</h1>
+            <p className="page-intro">{t("partner.intro")}</p>
 
             <div className="verification-card">
-              <div className="verification-symbol">✓</div>
-              <h2>Check your eligibility</h2>
-              <p>
-                Enter a demo code of at least six characters to preview the
-                interface. This does not verify your identity or licence.
-              </p>
-
-              <form onSubmit={verifyJetSki} className="form-stack">
-                <label htmlFor="jet-code">Demo access code</label>
-                <input
-                  id="jet-code"
-                  value={jetCode}
-                  onChange={(event) => {
-                    setJetCode(event.target.value);
-                    setVerified(false);
-                  }}
-                  placeholder="Enter a demo code"
-                  autoComplete="off"
-                />
-                <button className="button button-dark" type="submit">
-                  Check demo code
-                </button>
-              </form>
-
-              <div className={verified ? "status success" : "status"}>
-                <span className="status-dot" />
-                {verified
-                  ? "Demo code accepted — real verification still required"
-                  : "Eligibility not verified"}
-              </div>
-
-              <div className="safety-note">
-                <strong>Before a real rental</strong>
-                <p>
-                  Verify applicable age limits, identity, required licence or
-                  qualification, operator rules, safety briefing, and
-                  insurance. Only authorised staff should approve restricted
-                  access. Store sensitive documents securely and collect only
-                  what is necessary.
-                </p>
-              </div>
+              <PartnerForm t={t} onSubmit={addApplication} />
             </div>
           </section>
         )}
@@ -780,6 +824,54 @@ function App() {
               </div>
             </div>
 
+            <div className="dashboard-panel">
+              <span className="eyebrow">PARTNER REVIEW</span>
+              <h2>Partner applications</h2>
+
+              {applications.length === 0 ? (
+                <p className="empty-state">No partner applications yet.</p>
+              ) : (
+                applications.map((app) => (
+                  <div className="application-row" key={app.id}>
+                    <div>
+                      <strong>
+                        {app.name}
+                        {app.business ? ` · ${app.business}` : ""}
+                      </strong>
+                      <small>
+                        {app.id} · {app.kind === "rental" ? "Boat / jet ski owner" : "Restaurant"} · {app.phone}
+                      </small>
+                      <small>
+                        PDF: {app.fileName} ({app.fileSizeKb} KB)
+                      </small>
+                      <small>
+                        {app.items
+                          .map((entry) => `${entry.quantity}× ${entry.what} (${entry.kind})`)
+                          .join(", ")}
+                      </small>
+                    </div>
+                    <div className="application-actions">
+                      <span className={`status-pill ${app.status.toLowerCase()}`}>{app.status}</span>
+                      {app.status === "Pending" && (
+                        <>
+                          <button className="small-action" onClick={() => updateApplicationStatus(app.id, "Approved")}>
+                            Approve
+                          </button>
+                          <button className="small-action" onClick={() => updateApplicationStatus(app.id, "Rejected")}>
+                            Reject
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+              <p className="small-note">
+                Approval here is only a demo. In production, check the PDF itself against
+                the official register before approving.
+              </p>
+            </div>
+
             <div className="finance-explainer">
               <h2>Understand your money</h2>
               <div className="finance-equation">
@@ -807,11 +899,11 @@ function App() {
           <span className="brand-icon">R</span>
           <div>
             <strong>RIFSEA</strong>
-            <small>THE RIF COAST, REIMAGINED.</small>
+            <small>{t("footer.tag")}</small>
           </div>
         </div>
-        <p>Discover the sea. Support local businesses.</p>
-        <span>© {new Date().getFullYear()} RifSea · Prototype</span>
+        <p>{t("footer.text")}</p>
+        <span>© {new Date().getFullYear()} RifSea · {t("footer.proto")}</span>
       </footer>
 
       {booking && (
@@ -830,26 +922,25 @@ function App() {
             <button
               className="modal-close"
               onClick={() => setBooking(null)}
-              aria-label="Close booking form"
+              aria-label={t("booking.close")}
             >
               ×
             </button>
 
-            <span className="eyebrow">BOOK YOUR EXPERIENCE</span>
-            <h2 id="booking-title">{booking.name}</h2>
+            <span className="eyebrow">{t("booking.eyebrow")}</span>
+            <h2 id="booking-title">{t(`rental.${booking.id}.name`)}</h2>
             <p className="modal-price">
-              {money(booking.price)} <span>/ {booking.duration}</span>
+              {money(booking.price)} <span>/ {t(`dur.${booking.duration}`)}</span>
             </p>
             <p className="muted">
-              This creates a local demo request only. It does not reserve
-              equipment or collect money.
+              {t("booking.demo")}
             </p>
 
             <form className="form-stack" onSubmit={submitBooking}>
-              <label htmlFor="booking-name">Full name</label>
+              <label htmlFor="booking-name">{t("booking.name")}</label>
               <input id="booking-name" name="name" required />
 
-              <label htmlFor="booking-phone">Phone number</label>
+              <label htmlFor="booking-phone">{t("booking.phone")}</label>
               <input
                 id="booking-phone"
                 name="phone"
@@ -858,7 +949,7 @@ function App() {
                 required
               />
 
-              <label htmlFor="booking-date">Preferred date</label>
+              <label htmlFor="booking-date">{t("booking.date")}</label>
               <input
                 id="booking-date"
                 name="date"
@@ -867,32 +958,19 @@ function App() {
                 required
               />
 
-              <label>Rental details</label>
+              <label>{t("booking.details")}</label>
               <div className="booking-summary">
-                <span>{booking.type}</span>
-                <span>Up to {booking.capacity} people</span>
+                <span>{t(`type.${booking.type}`)}</span>
+                <span>{t("booking.people", { n: booking.capacity })}</span>
                 <strong>{money(booking.price)}</strong>
               </div>
 
               {booking.type === "Jet ski" && (
-                <div className="safety-note">
-                  Jet ski eligibility must be checked before an actual
-                  reservation can be confirmed.
-                  <button
-                    type="button"
-                    className="text-link"
-                    onClick={() => {
-                      setBooking(null);
-                      goTo("Jet Ski Access");
-                    }}
-                  >
-                    Open eligibility page ↗
-                  </button>
-                </div>
+                <div className="safety-note">{t("booking.jetNote")}</div>
               )}
 
               <button className="button button-dark full-button" type="submit">
-                Submit demo request
+                {t("booking.submit")}
               </button>
             </form>
           </section>
@@ -915,32 +993,32 @@ function App() {
             <button
               className="modal-close"
               onClick={() => setOrderOpen(false)}
-              aria-label="Close order form"
+              aria-label={t("order.close")}
             >
               ×
             </button>
-            <span className="eyebrow">RESTAURANT ORDER</span>
-            <h2 id="order-title">Almost ready.</h2>
+            <span className="eyebrow">{t("order.eyebrow")}</span>
+            <h2 id="order-title">{t("order.title")}</h2>
 
             {cart.length === 0 ? (
-              <p>Your cart is empty.</p>
+              <p>{t("cart.emptyNotice")}</p>
             ) : (
               <>
                 <div className="order-summary">
                   {cart.map((item) => (
                     <div className="cart-row" key={item.id}>
-                      <span>{item.name} × {item.quantity}</span>
+                      <span>{cartLabel(item)} × {item.quantity}</span>
                       <strong>{money(item.price * item.quantity)}</strong>
                     </div>
                   ))}
                   <div className="expense-total">
-                    <span>Subtotal</span>
+                    <span>{t("order.subtotal")}</span>
                     <strong>{money(cartTotal)}</strong>
                   </div>
                 </div>
 
                 <form className="form-stack" onSubmit={submitOrder}>
-                  <label htmlFor="order-name">Full name</label>
+                  <label htmlFor="order-name">{t("order.name")}</label>
                   <input
                     id="order-name"
                     value={orderCustomer.name}
@@ -953,7 +1031,7 @@ function App() {
                     required
                   />
 
-                  <label htmlFor="order-phone">Phone number</label>
+                  <label htmlFor="order-phone">{t("order.phone")}</label>
                   <input
                     id="order-phone"
                     type="tel"
@@ -967,9 +1045,7 @@ function App() {
                     required
                   />
 
-                  <label htmlFor="order-address">
-                    Pickup details or delivery address
-                  </label>
+                  <label htmlFor="order-address">{t("order.address")}</label>
                   <input
                     id="order-address"
                     value={orderCustomer.address}
@@ -979,11 +1055,11 @@ function App() {
                         address: event.target.value,
                       })
                     }
-                    placeholder="Confirm availability with the restaurant"
+                    placeholder={t("order.addressPh")}
                     required
                   />
 
-                  <label htmlFor="order-notes">Order notes (optional)</label>
+                  <label htmlFor="order-notes">{t("order.notes")}</label>
                   <textarea
                     id="order-notes"
                     value={orderCustomer.notes}
@@ -996,11 +1072,10 @@ function App() {
                   />
 
                   <button className="button button-dark full-button" type="submit">
-                    Submit demo order
+                    {t("order.submit")}
                   </button>
                   <p className="small-note">
-                    No payment is taken. This prototype does not transmit the
-                    order to a restaurant.
+                    {t("order.note")}
                   </p>
                 </form>
               </>
@@ -1012,68 +1087,388 @@ function App() {
   );
 }
 
-function RentalGrid({ items, onBook }) {
+function RentalGrid({ items, onBook, t }) {
   return (
     <div className="rental-grid">
-      {items.map((item) => (
-        <article className="rental-card" key={item.id}>
-          <div className="rental-image">
-            <img src={item.image} alt={item.name} loading="lazy" />
-            <span className="image-tag">{item.tag}</span>
-            <span className="type-tag">{item.type}</span>
-          </div>
+      {items.map((item) => {
+        const name = t(`rental.${item.id}.name`);
+        const duration = t(`dur.${item.duration}`);
 
-          <div className="rental-body">
-            <div className="rental-meta">
-              <span>⌁ {item.duration}</span>
-              <span>♧ Up to {item.capacity}</span>
+        return (
+          <article className="rental-card" key={item.id}>
+            <div className="rental-image">
+              <img src={item.image} alt={name} loading="lazy" />
+              <span className="image-tag">{t(`tag.${item.tag}`)}</span>
+              <span className="type-tag">{t(`type.${item.type}`)}</span>
             </div>
-            <h3>{item.name}</h3>
-            <p>{item.description}</p>
 
-            <div className="rental-bottom">
-              <div>
-                <strong>{money(item.price)}</strong>
-                <small>/ {item.duration}</small>
+            <div className="rental-body">
+              <div className="rental-meta">
+                <span>⌁ {duration}</span>
+                <span>♧ {t("rental.upTo", { n: item.capacity })}</span>
               </div>
-              <button
-                className="round-arrow"
-                onClick={() => onBook(item)}
-                aria-label={`Request booking for ${item.name}`}
-              >
-                ↗
-              </button>
+              <h3>{name}</h3>
+              <p>{t(`rental.${item.id}.desc`)}</p>
+
+              <div className="rental-bottom">
+                <div>
+                  <strong>{money(item.price)}</strong>
+                  <small>/ {duration}</small>
+                </div>
+                <button
+                  className="round-arrow"
+                  onClick={() => onBook(item)}
+                  aria-label={t("rental.bookAria", { name })}
+                >
+                  ↗
+                </button>
+              </div>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
 
-function MenuGrid({ items, onAdd }) {
+function MenuGrid({ items, onAdd, t }) {
   return (
     <div className="menu-grid">
-      {items.map((item) => (
-        <article className="menu-card" key={item.id}>
-          <img src={item.image} alt={item.name} loading="lazy" />
-          <div className="menu-card-body">
-            <span className="eyebrow">{item.category}</span>
-            <h3>{item.name}</h3>
-            <div className="menu-bottom">
-              <strong>{money(item.price)}</strong>
-              <button
-                className="round-arrow"
-                onClick={() => onAdd(item)}
-                aria-label={`Add ${item.name} to cart`}
-              >
-                +
-              </button>
+      {items.map((item) => {
+        const name = t(`menu.${item.id}`);
+
+        return (
+          <article className="menu-card" key={item.id}>
+            <img src={item.image} alt={name} loading="lazy" />
+            <div className="menu-card-body">
+              <span className="eyebrow">{t(`cat.${item.category}`)}</span>
+              <h3>{name}</h3>
+              <div className="menu-bottom">
+                <strong>{money(item.price)}</strong>
+                <button
+                  className="round-arrow"
+                  onClick={() => onAdd(item)}
+                  aria-label={t("menu.addAria", { name })}
+                >
+                  +
+                </button>
+              </div>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
+  );
+}
+
+// Water gear cards: same look as the menu cards, plus a size picker.
+function GearGrid({ items, onAdd, t }) {
+  const [chosen, setChosen] = useState({});
+
+  return (
+    <div className="menu-grid">
+      {items.map((item) => {
+        const name = t(`gear.${item.id}`);
+        const hasSizes = item.sizes.length > 0;
+        const size = hasSizes ? chosen[item.id] ?? item.sizes[0] : "";
+
+        return (
+          <article className="menu-card" key={item.id}>
+            {item.image ? (
+              <img src={item.image} alt={name} loading="lazy" />
+            ) : (
+              <div className="gear-art" aria-hidden="true">
+                {item.icon}
+              </div>
+            )}
+            <div className="menu-card-body">
+              <span className="eyebrow">{t(`gear.cat.${item.category}`)}</span>
+              <h3>{name}</h3>
+
+              {hasSizes ? (
+                <label className="gear-size">
+                  <span>{t("gear.size")}</span>
+                  <select
+                    value={size}
+                    onChange={(event) =>
+                      setChosen({ ...chosen, [item.id]: event.target.value })
+                    }
+                  >
+                    {item.sizes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <p className="gear-size-note">{t("gear.oneSize")}</p>
+              )}
+
+              <div className="menu-bottom">
+                <strong>{money(item.price)}</strong>
+                <button
+                  className="round-arrow"
+                  onClick={() =>
+                    onAdd({
+                      id: `${item.id}-${size || "one"}`,
+                      nameKey: `gear.${item.id}`,
+                      size,
+                      price: item.price,
+                    })
+                  }
+                  aria-label={t("menu.addAria", { name })}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Partner onboarding: boat / jet ski / yacht owners and restaurant owners.
+// Collects name, phone, a PDF licence/permit, and what they will offer
+// (type + description + how many). The PDF is checked in the browser
+// (type, size, real "%PDF-" signature) but only a SERVER can store it
+// safely. See the PRODUCTION note inside handleSubmit.
+// ---------------------------------------------------------------------
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+const RENTAL_KINDS = ["Jet ski", "Boat", "Yacht"];
+const RESTAURANT_KINDS = ["Food", "Drinks"];
+
+const newItem = (kind) => ({
+  key: `${Date.now()}-${Math.random()}`,
+  kind,
+  what: "",
+  quantity: "1",
+});
+
+function PartnerForm({ t, onSubmit }) {
+  const [kind, setKind] = useState("rental");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [business, setBusiness] = useState("");
+  const [file, setFile] = useState(null);
+  const [items, setItems] = useState([newItem("Jet ski")]);
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState("");
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  const kinds = kind === "rental" ? RENTAL_KINDS : RESTAURANT_KINDS;
+  const kindLabel = (value) =>
+    t(kind === "rental" ? `type.${value}` : `cat.${value}`);
+
+  function resetFile() {
+    setFile(null);
+    setFileInputKey((current) => current + 1); // clears the <input type="file">
+  }
+
+  function changeKind(next) {
+    setKind(next);
+    setItems([newItem(next === "rental" ? "Jet ski" : "Food")]);
+    resetFile(); // a boat licence is not a hygiene permit: ask again
+    setError("");
+  }
+
+  function updateItem(key, patch) {
+    setItems((current) =>
+      current.map((item) => (item.key === key ? { ...item, ...patch } : item))
+    );
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+
+    if (!file) return setError(t("partner.err.noFile"));
+    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+      return setError(t("partner.err.pdf"));
+    }
+    if (file.size > MAX_PDF_BYTES) return setError(t("partner.err.size"));
+
+    const cleanItems = items.map((item) => ({
+      ...item,
+      what: item.what.trim(),
+      quantity: Number(item.quantity),
+    }));
+    const itemsAreValid = cleanItems.every(
+      (item) => item.what && Number.isInteger(item.quantity) && item.quantity >= 1
+    );
+    if (!itemsAreValid) return setError(t("partner.err.items"));
+    if (!consent) return setError(t("partner.err.consent"));
+
+    // A file name or browser MIME type can be faked. Real PDFs start with "%PDF-".
+    const signature = await file.slice(0, 5).text();
+    if (signature !== "%PDF-") return setError(t("partner.err.fake"));
+
+    // PRODUCTION: send the real file to YOUR server here (never keep it only
+    // in the browser). Example:
+    //   const body = new FormData();
+    //   body.append("document", file);
+    //   body.append("data", JSON.stringify({ kind, name, phone, business, items: cleanItems }));
+    //   await fetch("/api/partner-applications", { method: "POST", body });
+    onSubmit({
+      id: `PA-${Date.now().toString().slice(-6)}`,
+      kind,
+      name: name.trim(),
+      phone: phone.trim(),
+      business: business.trim(),
+      fileName: file.name,
+      fileSizeKb: Math.max(1, Math.round(file.size / 1024)),
+      items: cleanItems,
+      status: "Pending",
+    });
+
+    setName("");
+    setPhone("");
+    setBusiness("");
+    setConsent(false);
+    setItems([newItem(kind === "rental" ? "Jet ski" : "Food")]);
+    resetFile();
+  }
+
+  return (
+    <form className="form-stack" onSubmit={handleSubmit}>
+      <span className="field-title">{t("partner.iAm")}</span>
+      <div className="partner-type" role="radiogroup" aria-label={t("partner.iAm")}>
+        {["rental", "restaurant"].map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={kind === option}
+            className={kind === option ? "filter active" : "filter"}
+            onClick={() => changeKind(option)}
+          >
+            {t(`partner.type.${option}`)}
+          </button>
+        ))}
+      </div>
+
+      <label htmlFor="partner-name">{t("partner.name")}</label>
+      <input
+        id="partner-name"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        autoComplete="name"
+        required
+      />
+
+      <label htmlFor="partner-phone">{t("partner.phone")}</label>
+      <input
+        id="partner-phone"
+        type="tel"
+        value={phone}
+        onChange={(event) => setPhone(event.target.value)}
+        placeholder="+212..."
+        autoComplete="tel"
+        pattern="[0-9+\- ]{6,}"
+        required
+      />
+
+      {kind === "restaurant" && (
+        <>
+          <label htmlFor="partner-business">{t("partner.business")}</label>
+          <input
+            id="partner-business"
+            value={business}
+            onChange={(event) => setBusiness(event.target.value)}
+            required
+          />
+        </>
+      )}
+
+      <label htmlFor="partner-file">{t(`partner.doc.${kind}`)}</label>
+      <input
+        key={fileInputKey}
+        id="partner-file"
+        type="file"
+        accept="application/pdf,.pdf"
+        onChange={(event) => {
+          setFile(event.target.files?.[0] ?? null);
+          setError("");
+        }}
+      />
+      <p className="small-note">
+        {t("partner.doc.hint")}
+        {file && ` ${t("partner.doc.chosen")} ${file.name}`}
+      </p>
+
+      <span className="field-title">{t(`partner.items.${kind}`)}</span>
+      {items.map((item) => (
+        <div className="item-row" key={item.key}>
+          <select
+            aria-label={t("partner.item.kind")}
+            value={item.kind}
+            onChange={(event) => updateItem(item.key, { kind: event.target.value })}
+          >
+            {kinds.map((option) => (
+              <option key={option} value={option}>
+                {kindLabel(option)}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label={t(`partner.item.what.${kind}`)}
+            placeholder={t(`partner.item.what.${kind}`)}
+            value={item.what}
+            onChange={(event) => updateItem(item.key, { what: event.target.value })}
+          />
+          <input
+            aria-label={t("partner.item.qty")}
+            type="number"
+            min="1"
+            step="1"
+            value={item.quantity}
+            onChange={(event) => updateItem(item.key, { quantity: event.target.value })}
+          />
+          {items.length > 1 && (
+            <button
+              type="button"
+              className="small-action"
+              onClick={() =>
+                setItems((current) => current.filter((entry) => entry.key !== item.key))
+              }
+            >
+              {t("partner.item.remove")}
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="text-link align-start"
+        onClick={() => setItems((current) => [...current, newItem(kinds[0])])}
+      >
+        {t("partner.item.add")}
+      </button>
+
+      <label className="check-row" htmlFor="partner-consent">
+        <input
+          id="partner-consent"
+          type="checkbox"
+          checked={consent}
+          onChange={(event) => setConsent(event.target.checked)}
+        />
+        <span>{t("partner.consent")}</span>
+      </label>
+
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <button className="button button-dark" type="submit">
+        {t("partner.submit")}
+      </button>
+      <p className="small-note">{t("partner.proto")}</p>
+    </form>
   );
 }
 
