@@ -94,14 +94,14 @@ const CLOTHING_SIZES = ["S", "M", "L", "XL"];
 const SHOE_SIZES = ["38", "39", "40", "41", "42", "43", "44", "45"];
 
 const gear = [
-  { id: 201, category: "Clothing", price: 450, icon: "🏄", image: "", sizes: CLOTHING_SIZES },
-  { id: 202, category: "Clothing", price: 180, icon: "👕", image: "", sizes: CLOTHING_SIZES },
-  { id: 203, category: "Clothing", price: 160, icon: "🩳", image: "", sizes: CLOTHING_SIZES },
-  { id: 204, category: "Eyewear", price: 90, icon: "🥽", image: "", sizes: [] },
-  { id: 205, category: "Eyewear", price: 220, icon: "🤿", image: "", sizes: [] },
-  { id: 206, category: "Eyewear", price: 140, icon: "🕶️", image: "", sizes: [] },
-  { id: 207, category: "Accessories", price: 110, icon: "👟", image: "", sizes: SHOE_SIZES },
-  { id: 208, category: "Accessories", price: 60, icon: "📱", image: "", sizes: [] },
+  { id: 201, category: "Clothing", price: 450, icon: "🏄", image: "https://www.f2boards.com/media/pic/c9fd0a6f22e55e8cc0b74f23ac41c1ed/dsc-5255.jpg", sizes: CLOTHING_SIZES },
+  { id: 202, category: "Clothing", price: 180, icon: "👕", image: "https://shopuni-t.com/cdn/shop/products/Swim-More-T-Shirt-for-Men-Perfect-for-Swimming-Enthusiasts-and-Beach-Lovers-Uni-T-27006187.jpg?v=1786585643&width=1946", sizes: CLOTHING_SIZES },
+  { id: 203, category: "Clothing", price: 160, icon: "🩳", image: "https://cdn11.bigcommerce.com/s-do3nxddvbo/images/stencil/1280x1280/products/3103/3124/2016080517441848_1__44618.1592686824.jpg?c=1", sizes: CLOTHING_SIZES },
+  { id: 204, category: "Eyewear", price: 90, icon: "", image: "https://athletehome-eg.com/cdn/shop/files/35183.png?v=1781610645", sizes: [] },
+  { id: 205, category: "Eyewear", price: 220, icon: "", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQfzFCV4M_9cC6gu9J7sTsgJESZMrTC9fq-1pTe6GE_Xg&s=10", sizes: [] },
+  { id: 206, category: "Eyewear", price: 140, icon: "🕶️", image: "https://www.milosport.com/cdn/shop/files/blue_sand.png?v=1781209380&width=1024", sizes: [] },
+  { id: 207, category: "Accessories", price: 110, icon: "👟", image: "https://digitalcontent.api.tesco.com/v2/media/marketplace/f5a41c7c-6ce3-4fc7-8f3c-a9289b55dc38/21772fc9129944549b845b68fdd9c8be_1684367926.jpeg?h=960&w=960", sizes: SHOE_SIZES },
+  { id: 208, category: "Accessories", price: 60, icon: "📱", image: "https://www.swimcore.com/cdn/shop/collections/Untitled_design_4088fff0-9b00-49ff-808a-f916953db2df.jpg?v=1684406957&width=2400", sizes: [] },
 ];
 
 const money = (value) =>
